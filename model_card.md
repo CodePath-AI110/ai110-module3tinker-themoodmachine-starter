@@ -12,25 +12,32 @@ You may complete this model card for whichever version you used, or compare both
 **Model type:**  
 Describe whether you used the rule based model, the ML model, or both.  
 Example: “I used the rule based model only” or “I compared both models.”
+I only made changes to the rule based model, then compared that output with the ML model's output.
 
 **Intended purpose:**  
 What is this model trying to do?  
 Example: classify short text messages as moods like positive, negative, neutral, or mixed.
+The model is taking a sentence, and categorizing it whether it is postive, negative, neutral, or mixed (both positive and negative).
 
 **How it works (brief):**  
 For the rule based version, describe the scoring rules you created.  
 For the ML version, describe how training works at a high level (no math needed).
 
+The rule-based model converts each post into lowercase tokens and gives positive words +1 and negative words -1, with repeated words counted more than once. A positive score produces a positive label, a negative score produces a negative label, and a zero score produces neutral. I improved it by recognizing emoticons and emojis, handling negation, treating `lowkey`, `highkey`, and `no cap` as slang modifiers, and using `but` to identify mixed emotions. Accuracy improved from 57% to 93% on the earlier dataset, and it scored 13 out of 16 posts, or 81.25%, after two challenging examples were added.
+
+The ML model uses `CountVectorizer` to represent each post by the words it contains, then uses logistic regression to connect those word patterns with mood labels from the training examples. This allows it to learn patterns automatically, but the small dataset limits how well it handles unfamiliar wording.
 
 
 ## 2. Data
 
 **Dataset description:**  
 Summarize how many posts are in `SAMPLE_POSTS` and how you added new ones.
+I added 11 new SAMPLE_POSTS and I created and labeled them based on how I would use it in regular every day language.
 
 **Labeling process:**  
 Explain how you chose labels for your new examples.  
 Mention any posts that were hard to label or could have multiple valid labels.
+Where the rule based model struggled was with sarcasm. It also got tripped up on words like "highkey", "lowkey", and "but". I changed it so that highkey and lowkey added weight to the other words around it. This improved the score a lot.
 
 **Important characteristics of your dataset:**  
 Examples you might include:  

@@ -92,3 +92,36 @@ TRUE_LABELS = [
 #
 # Remember to keep them aligned:
 #   len(SAMPLE_POSTS) == len(TRUE_LABELS)
+
+SAMPLE_POSTS.append("I absolutely love getting stuck in traffic")
+TRUE_LABELS.append("negative")  # This is a sarcastic post
+
+SAMPLE_POSTS.append("I'm feeling a bit under the weather today, but still hopeful")
+TRUE_LABELS.append("mixed")  # Ambiguous feelings
+
+SAMPLE_POSTS.append("Lowkey stressed but kind of proud of myself")
+TRUE_LABELS.append("mixed")
+
+SAMPLE_POSTS.append("Highkey having the best day ever 😂")
+TRUE_LABELS.append("positive")
+
+SAMPLE_POSTS.append("No cap, this homework is boring")
+TRUE_LABELS.append("negative")
+
+SAMPLE_POSTS.append("I finally finished my project :)")
+TRUE_LABELS.append("positive")
+
+SAMPLE_POSTS.append("Missed the bus again :( but at least the weather is nice")
+TRUE_LABELS.append("mixed")
+
+SAMPLE_POSTS.append("Nothing special happened today")
+TRUE_LABELS.append("neutral")
+
+SAMPLE_POSTS.append("This is sick")
+TRUE_LABELS.append("positive")  # "sick" as in "awesome"
+
+SAMPLE_POSTS.append("I'm on fire today 🔥")
+TRUE_LABELS.append("positive")  # "on fire" as in "doing great"
+
+SAMPLE_POSTS.append("I'm burning up, I think im sick :((")
+TRUE_LABELS.append("negative")  

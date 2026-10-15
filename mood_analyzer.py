@@ -9,6 +9,7 @@ This class starts with very simple logic:
   - Convert that score into a mood label
 """
 
+import re
 from typing import List, Dict, Tuple, Optional
 
 from dataset import POSITIVE_WORDS, NEGATIVE_WORDS
@@ -40,22 +41,16 @@ class MoodAnalyzer:
         """
         Convert raw text into a list of tokens the model can work with.
 
-        TODO: Improve this method.
-
-        Right now, it does the minimum:
-          - Strips leading and trailing whitespace
-          - Converts everything to lowercase
-          - Splits on spaces
-
-        Ideas to improve:
-          - Remove punctuation
-          - Handle simple emojis separately (":)", ":-(", "🥲", "😂")
-          - Normalize repeated characters ("soooo" -> "soo")
+        Improvement instructions:
+          - Normalize text to lowercase.
+          - Keep words, contractions, simple emoticons, and selected emojis
+            as separate tokens so scoring can recognize them.
+          - Add more token patterns here if the dataset introduces new
+            slang, punctuation, or emoji styles.
         """
         cleaned = text.strip().lower()
-        tokens = cleaned.split()
-
-        return tokens
+        token_pattern = r"[a-z0-9]+(?:'[a-z]+)?|[:;]-?[)(]|[😂🤣😄😁😊😍🥲😢😭😞😔😡😠💀]"
+        return re.findall(token_pattern, cleaned)
 
     # ---------------------------------------------------------------------
     # Scoring logic
@@ -68,22 +63,47 @@ class MoodAnalyzer:
         Positive words increase the score.
         Negative words decrease the score.
 
-        TODO: You must choose AT LEAST ONE modeling improvement to implement.
-        For example:
-          - Handle simple negation such as "not happy" or "not bad"
-          - Count how many times each word appears instead of just presence
-          - Give some words higher weights than others (for example "hate" < "annoyed")
-          - Treat emojis or slang (":)", "lol", "💀") as strong signals
+        Improvement instructions:
+          - Start with one point for each positive or negative signal.
+          - Count repeated words instead of only checking whether a word exists.
+          - Flip the next mood signal after "not", "never", or "no" to handle
+            simple phrases such as "not happy" and "not bad".
+          - Treat "lowkey" and "highkey" as neutral intensity modifiers for
+            the next mood word, and treat "no cap" as neutral slang.
+          - Expand the emoji and slang signal sets as you learn from failures.
         """
-        # TODO: Implement this method.
-        #   1. Call self.preprocess(text) to get tokens.
-        #   2. Loop over the tokens.
-        #   3. Increase the score for positive words, decrease for negative words.
-        #   4. Return the total score.
-        #
-        # Hint: if you implement negation, you may want to look at pairs of tokens,
-        # like ("not", "happy") or ("never", "fun").
-        pass
+        tokens = self.preprocess(text)
+        positive_signals = {":)", ":-)", "😂", "🤣", "😄", "😁", "😊", "😍"}
+        negative_signals = {":(", ":-(", "🥲", "😢", "😭", "😞", "😔", "😡", "😠", "💀"}
+        negation_words = {"not", "never", "no"}
+        score = 0
+        negate_next = False
+        intensity = 1
+
+        for index, token in enumerate(tokens):
+            if token == "no" and index + 1 < len(tokens) and tokens[index + 1] == "cap":
+                continue
+            if token == "cap" and index > 0 and tokens[index - 1] == "no":
+                continue
+            if token == "lowkey":
+                intensity = 1
+                continue
+            if token == "highkey":
+                intensity = 2
+                continue
+            if token in negation_words:
+                negate_next = True
+                continue
+
+            signal = 1 if token in self.positive_words or token in positive_signals else 0
+            signal = -1 if token in self.negative_words or token in negative_signals else signal
+
+            if signal:
+                score += (-signal if negate_next else signal) * intensity
+                negate_next = False
+                intensity = 1
+
+        return score
 
     # ---------------------------------------------------------------------
     # Label prediction
@@ -98,19 +118,60 @@ class MoodAnalyzer:
           - score < 0  -> "negative"
           - score == 0 -> "neutral"
 
-        TODO: You can adjust this mapping if it makes sense for your model.
-        For example:
-          - Use different thresholds (for example score >= 2 to be "positive")
-          - Add a "mixed" label for scores close to zero
-        Just remember that whatever labels you return should match the labels
-        you use in TRUE_LABELS in dataset.py if you care about accuracy.
+        Improvement instructions:
+          - Use the score sign for clear positive and negative predictions.
+          - Treat "but" as a contrast marker and return "mixed" when it
+            appears, even if one side is difficult to classify.
+          - Treat slang such as "lowkey", "highkey", and "no cap" as
+            modifiers rather than mood words.
+          - Check whether both positive and negative signals appear so balanced
+          emotions can be labeled "mixed" instead of "neutral".
+          - Adjust these thresholds or signal sets after reviewing evaluation
+          mistakes in the labeled dataset.
         """
-        # TODO: Implement this method.
-        #   1. Call self.score_text(text) to get the numeric score.
-        #   2. Return "positive" if the score is above 0.
-        #   3. Return "negative" if the score is below 0.
-        #   4. Return "neutral" otherwise.
-        pass
+        tokens = self.preprocess(text)
+        negation_words = {"not", "never", "no"}
+        positive_signals = self.positive_words | {":)", ":-)", "😂", "🤣", "😄", "😁", "😊", "😍"}
+        negative_signals = self.negative_words | {":(", ":-(", "🥲", "😢", "😭", "😞", "😔", "😡", "😠", "💀"}
+        has_positive = False
+        has_negative = False
+        negate_next = False
+
+        if "but" in tokens:
+          return "mixed"
+
+        for index, token in enumerate(tokens):
+          if token == "no" and index + 1 < len(tokens) and tokens[index + 1] == "cap":
+            continue
+          if token == "cap" and index > 0 and tokens[index - 1] == "no":
+            continue
+          if token in {"lowkey", "highkey"}:
+            continue
+          if token in negation_words:
+            negate_next = True
+            continue
+          if token in positive_signals:
+            if negate_next:
+              has_negative = True
+            else:
+              has_positive = True
+            negate_next = False
+          elif token in negative_signals:
+            if negate_next:
+              has_positive = True
+            else:
+              has_negative = True
+            negate_next = False
+
+        if has_positive and has_negative:
+          return "mixed"
+
+        score = self.score_text(text)
+        if score > 0:
+          return "positive"
+        if score < 0:
+          return "negative"
+        return "neutral"
 
     # ---------------------------------------------------------------------
     # Explanations (optional but recommended)
